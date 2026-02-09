@@ -1,83 +1,103 @@
 function ConvertTo-SNowQueryValue {
+    <#
+      Encodes a value for sysparm_query WITHOUT double-encoding existing %XX sequences.
+      - Preserves newlines as %0D%0A
+      - Preserves existing URL-encoded sequences like %2F, %3A, etc. (so SharePoint URLs survive)
+      - Encodes everything else as UTF-8 percent encoding
+    #>
     param([Parameter(Mandatory)][string]$Text)
 
-    # Preserve line breaks the way ServiceNow reliably renders them
+    # Normalize line breaks and convert to SNOW-friendly CRLF encoding
     $t = $Text -replace "`r`n", "`n"
     $t = $t -replace "`r", "`n"
     $t = $t -replace "`n", "%0D%0A"
 
-    # Keep it close to how your original worked:
-    # encode only characters that will break query parsing, but don't obliterate everything
-    $t = $t.Replace("%", "%25")  # protect literal % first
-    $t = $t.Replace("^", "%5E")
-    $t = $t.Replace("&", "%26")
-    $t = $t.Replace("=", "%3D")
-    $t = $t.Replace("#", "%23")
-    $t = $t.Replace("+", "%2B")
-    $t = $t.Replace(" ", "%20")
+    $sb = New-Object System.Text.StringBuilder
 
-    return $t
+    for ($i = 0; $i -lt $t.Length; $i++) {
+        $ch = $t[$i]
+
+        # Preserve existing %HH sequences (prevents breaking already-encoded URLs)
+        if ($ch -eq '%' -and ($i + 2) -lt $t.Length) {
+            $h1 = $t[$i + 1]
+            $h2 = $t[$i + 2]
+            if ($h1 -match '[0-9A-Fa-f]' -and $h2 -match '[0-9A-Fa-f]') {
+                [void]$sb.Append('%').Append($h1).Append($h2)
+                $i += 2
+                continue
+            }
+        }
+
+        # Unreserved characters (RFC3986) can pass through
+        if ($ch -match '[A-Za-z0-9\-\._~]') {
+            [void]$sb.Append($ch)
+            continue
+        }
+
+        # Encode everything else as UTF-8 bytes -> %HH
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes([string]$ch)
+        foreach ($b in $bytes) {
+            [void]$sb.AppendFormat("%{0:X2}", $b)
+        }
+    }
+
+    $sb.ToString()
 }
 
 function New-SNowClassicTargetUrl {
+    <#
+      Builds the classic/target URL that your instance actually uses for prefill.
+      IMPORTANT: sysparm_query is embedded INSIDE the encoded target portion.
+    #>
     param(
-        [Parameter(Mandatory)][string]$InstanceBaseUrl,  # https://yourit.va.gov
-        [Parameter(Mandatory)][string]$Table,            # u_work_ticket / u_work_task
+        [Parameter(Mandatory)][string]$InstanceBase,  # https://yourit.va.gov
+        [Parameter(Mandatory)][string]$Table,         # u_work_ticket / u_work_task
         [Parameter(Mandatory)][hashtable]$Fields
     )
 
-    # Build sysparm_query the ServiceNow way: key=value^key=value
     $pairs = foreach ($k in $Fields.Keys) {
         $v = $Fields[$k]
-        if ($null -eq $v -or ($v -is [string] -and $v.Trim() -eq "")) { continue }
+        if ($null -eq $v) { continue }
 
-        $vv = ConvertTo-SNowQueryValue -Text ([string]$v)
-        "$k=$vv"
+        $s = [string]$v
+        if ($s.Trim() -eq "") { continue }
+
+        $encodedVal = ConvertTo-SNowQueryValue -Text $s
+        "$k=$encodedVal"
     }
 
-    $rawQuery = ($pairs -join "^")
+    $sysparmQuery = ($pairs -join "^")
 
-    # Embed sysparm_query inside the encoded target URL (this is what your old script did)
-    $targetEncoded =
-        "$Table.do%3Fsys_id%3D-1%26sysparm_query%3D$rawQuery"
-
-    return "$InstanceBaseUrl/now/nav/ui/classic/params/target/$targetEncoded"
+    # This mirrors your old pattern: target/<table>.do%3Fsys_id%3D-1%26sysparm_query%3D....
+    $target = "$Table.do%3Fsys_id%3D-1%26sysparm_query%3D$sysparmQuery"
+    return "$InstanceBase/now/nav/ui/classic/params/target/$target"
 }
+
 
 
 
 +++++++++++++++++++++++++++++++++++
-Worticket
-$fields = @{
-  type              = "normal"
-  impact            = 4
-  assignment_group  = "4e965a49db5dd3c0b857fd721f9619d5"
-  assigned_to       = "javascript:gs.user_id()"
-  short_description = $short
-  description       = $desc
-  due_date          = $due
-  cmdb_ci           = "bbf1bbdf1b88ec5006020f6fe54bcb68"
-}
+Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-window", $Config.HomeUrl) | Out-Null
+Start-Sleep -Seconds 4
 
-$ticketUrl = New-SNowClassicTargetUrl -InstanceBaseUrl $Config.InstanceBase -Table "u_work_ticket" -Fields $fields
+$ticketUrl = New-SNowClassicTargetUrl -InstanceBase $Config.InstanceBase -Table "u_work_ticket" -Fields $fields
+Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-window", $ticketUrl) | Out-Null
+
 
 +++++++++++++++++++++++++
-Wortassk
-$taskFields = @{
-  type              = "normal"
-  impact            = 4
-  urgency           = 4
-  assignment_group  = $Config.AssignmentGroupSysId
-  assigned_to       = "javascript:gs.user_id()"
-  short_description = $short
-  description       = $taskDesc   # will keep line breaks now
-  cmdb_ci           = $Config.AffectedCI
-  u_requestor       = "javascript:gs.user_id()"
-  u_affected_user   = "javascript:gs.user_id()"
-  u_work_ticket     = $WorkTicketSysId
+$taskUrl = New-SNowClassicTargetUrl -InstanceBase $Config.InstanceBase -Table "u_work_task" -Fields @{
+    type              = "normal"
+    impact            = 4
+    urgency           = 4
+    assignment_group  = $Config.AssignmentGroupSysId
+    assigned_to       = "javascript:gs.user_id()"
+    u_requestor       = "javascript:gs.user_id()"
+    u_affected_user   = "javascript:gs.user_id()"
+    cmdb_ci           = $Config.AffectedCI
+    short_description = $short
+    description       = $taskDesc
+    u_work_ticket     = $WorkTicketSysId
 }
-
-$taskUrl = New-SNowClassicTargetUrl -InstanceBaseUrl $Config.InstanceBase -Table "u_work_task" -Fields $taskFields
 
 
 
