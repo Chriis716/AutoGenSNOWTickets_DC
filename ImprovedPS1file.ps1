@@ -1,15 +1,15 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ----------------------------
-# Startup / Assemblies
-# ----------------------------
+# =========================
+# Paths / Assemblies
+# =========================
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
 
-# Load DLLs relative to script root (assembly\*.dll)
+# Load local DLLs the way you already do (assembly folder next to script)
 $DllRoot = Join-Path $ScriptRoot "assembly"
 $Dlls = @(
     "MahApps.Metro.dll",
@@ -23,7 +23,34 @@ foreach ($dll in $Dlls) {
     [void][System.Reflection.Assembly]::LoadFrom($p)
 }
 
-function LoadXml {
+# =========================
+# Config (edit these)
+# =========================
+$Config = [ordered]@{
+    BrowserExe   = "msedge.exe"
+
+    # Terms gate + ServiceNow base
+    TermsUrl     = "https://yourIT.VA.GOV/va?id=va_termsandconditions"
+    HomeUrl      = "https://yourit.va.gov/home.do"
+    InstanceBase = "https://yourit.va.gov"
+
+    # Defaults you said must prefill
+    AssignmentGroupSysId = "4e965a49db5dd3c0b857fd721f9619d5"   # Team3 sys_id
+    AffectedCI           = "bbf1bbdf1b88ec5006020f6fe54bcb68"   # CI sys_id
+    DueTime24            = "14:30:00"
+}
+
+# =========================
+# Helpers
+# =========================
+
+function Get-TextSafe {
+    param($Value)
+    if ($null -eq $Value) { return "" }
+    return [string]$Value
+}
+
+function Load-XmlXaml {
     param([Parameter(Mandatory)][string]$Path)
 
     $doc = New-Object System.Xml.XmlDocument
@@ -31,25 +58,8 @@ function LoadXml {
     return $doc
 }
 
-# ----------------------------
-# ServiceNow config
-# ----------------------------
-$Config = [ordered]@{
-    BrowserExe   = "msedge.exe"
-    HomeUrl      = "https://yourit.va.gov/home.do"
-    TermsUrl     = "https://yourIT.VA.GOV/va?id=va_termsandconditions"
-    InstanceBase = "https://yourit.va.gov"
-
-    AssignmentGroupSysId = "4e965a49db5dd3c0b857fd721f9619d5"  # Team3
-    AffectedCI           = "bbf1bbdf1b88ec5006020f6fe54bcb68"
-    DueTime24            = "14:30:00"
-}
-
-# ----------------------------
-# Helpers
-# ----------------------------
 function Invoke-SNowPreflightTerms {
-    # Opens Terms page and pauses so user can click Accept (reliable w/o Selenium/Playwright)
+    # Open Terms page and pause so you can click ACCEPT once.
     Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-window", $Config.TermsUrl) | Out-Null
 
     [void][System.Windows.MessageBox]::Show(
@@ -88,51 +98,88 @@ function Get-WorkWeekDates {
 
 function To-SNowDate([datetime]$d) { $d.ToString("MM/dd/yyyy") }
 
-function New-SNowClassicUrl {
+function ConvertTo-SNowQueryValue {
     <#
-      Builds Classic form URL:
-      https://instance/now/nav/ui/classic/params/target/<table>.do%3Fsys_id%3D-1&sysparm_query=...
+      This is the critical piece to match your "old URL behavior":
+      - Preserve new lines for description: %0D%0A
+      - Encode characters that break sysparm_query parsing
+      NOTE: We do NOT fully EscapeDataString the entire sysparm_query;
+            we encode values similarly to your existing working URLs.
+    #>
+    param([Parameter(Mandatory)][string]$Text)
+
+    # Normalize + preserve line breaks
+    $t = $Text -replace "`r`n", "`n"
+    $t = $t -replace "`r", "`n"
+    $t = $t -replace "`n", "%0D%0A"
+
+    # Encode common breakers (order matters; protect % first)
+    $t = $t.Replace("%", "%25")
+    $t = $t.Replace("^", "%5E")
+    $t = $t.Replace("&", "%26")
+    $t = $t.Replace("=", "%3D")
+    $t = $t.Replace("#", "%23")
+    $t = $t.Replace("+", "%2B")
+    $t = $t.Replace(" ", "%20")
+
+    return $t
+}
+
+function New-SNowClassicTargetUrl {
+    <#
+      Builds the SAME style link your old script uses:
+      https://instance/now/nav/ui/classic/params/target/<table>.do%3Fsys_id%3D-1%26sysparm_query%3D...
+      This is what makes ServiceNow prefill reliably in your environment.
     #>
     param(
-        [Parameter(Mandatory)][string]$Table,
+        [Parameter(Mandatory)][string]$Table,    # u_work_ticket or u_work_task
         [Parameter(Mandatory)][hashtable]$Fields
     )
 
+    # Build key=value^key=value with values encoded "SNOW-style"
     $pairs = foreach ($k in $Fields.Keys) {
         $v = $Fields[$k]
         if ($null -eq $v) { continue }
-        "$k=$v"
+
+        $s = [string]$v
+        if ($s.Trim() -eq "") { continue }
+
+        $vv = ConvertTo-SNowQueryValue -Text $s
+        "$k=$vv"
     }
 
-    $raw = ($pairs -join "^")
-    $encoded = [System.Uri]::EscapeDataString($raw)
+    $rawQuery = ($pairs -join "^")
 
-    "$($Config.InstanceBase)/now/nav/ui/classic/params/target/$Table.do%3Fsys_id%3D-1&sysparm_query=$encoded"
+    # Embed sysparm_query in the encoded target (THIS is the key)
+    $targetEncoded = "$Table.do%3Fsys_id%3D-1%26sysparm_query%3D$rawQuery"
+    return "$($Config.InstanceBase)/now/nav/ui/classic/params/target/$targetEncoded"
 }
 
 function Get-SNowSysIdFromText {
     param([Parameter(Mandatory)][string]$Text)
 
-    # Supports sys_id=xxxx or sys_id%3Dxxxx or any string containing it
+    # Works with sys_id=... or sys_id%3D...
     if ($Text -match '(?:sys_id=|sys_id%3D)([0-9a-fA-F]{32})') { return $matches[1] }
     return $null
 }
 
-# ----------------------------
-# Ticket / Task builders
-# ----------------------------
-function New-WorkTicketUrl {
-    param([Parameter(Mandatory)][string]$Site)
+# =========================
+# Builders: Work Ticket + Work Tasks
+# =========================
+
+function New-DailyChecksWorkTicketUrl {
+    param([Parameter(Mandatory)][string]$SiteInfo)
 
     $week = Get-WorkWeekDates
     $m = To-SNowDate $week.Monday
     $f = To-SNowDate $week.Friday
     $due = "$f $($Config.DueTime24)"
 
-    $short = "$Site - Daily Checks Work Ticket $m to $f"
-    $desc  = "$Site Daily Checks for Workweek: $m to $f"
+    $short = "$SiteInfo - Daily Checks Work Ticket $m to $f"
+    $desc  = "$SiteInfo Daily Checks for Workweek: $m to $f"
 
-    New-SNowClassicUrl -Table "u_work_ticket" -Fields @{
+    # Only fields you know are correct for ticket table
+    New-SNowClassicTargetUrl -Table "u_work_ticket" -Fields @{
         type              = "normal"
         impact            = 4
         assignment_group  = $Config.AssignmentGroupSysId
@@ -144,16 +191,17 @@ function New-WorkTicketUrl {
     }
 }
 
-function New-WorkTaskUrls {
+function New-DailyChecksWorkTaskUrls {
     param(
-        [Parameter(Mandatory)][string]$Site,
+        [Parameter(Mandatory)][string]$SiteInfo,
         [Parameter(Mandatory)][string]$WorkTicketSysId
     )
 
     $week = Get-WorkWeekDates
 
+    # This preserves new lines exactly like your old URL did (via %0D%0A)
     $taskDesc = @"
-$Site Perform Daily Checks on the VistA Imaging System In Accordance With the SOP and Training documents
+$SiteInfo Perform Daily Checks on the VistA Imaging System In Accordance With the SOP and Training documents
 
 Training Modules:
 https://dvagov.sharepoint.com/sites/oitspmhsphismclinternal/Training/Forms/AllItems.aspx?id=%2Fsites%2Foitspmhsphismclinternal%2FTraining%2FDaily%20Checks&viewid=6a448197%2Ddc45%2D4f14%2Da02d%2Db306278fe303
@@ -174,21 +222,29 @@ https://dvagov.sharepoint.com/sites/oitspmhsphismclinternal/SitePages/Clinical-I
 
     foreach ($d in $days) {
         $dateString = To-SNowDate $d.Date
-        $short = "$Site - $($d.Name) Daily Checks, Date: $dateString"
+        $short = "$SiteInfo - $($d.Name) Daily Checks, Date: $dateString"
 
-        $urls.Add( (New-SNowClassicUrl -Table "u_work_task" -Fields @{
-            type              = "normal"
-            impact            = 4
-            urgency           = 4
-            assignment_group  = $Config.AssignmentGroupSysId
-            assigned_to       = "javascript:gs.user_id()"
-            short_description = $short
-            description       = $taskDesc
-            cmdb_ci           = $Config.AffectedCI
-            u_requestor       = "javascript:gs.user_id()"
-            u_affected_user   = "javascript:gs.user_id()"
-            u_work_ticket     = $WorkTicketSysId
-        }) )
+        # IMPORTANT: these keys must match your instance table field names
+        $urls.Add(
+            (New-SNowClassicTargetUrl -Table "u_work_task" -Fields @{
+                type              = "normal"
+                impact            = 4
+                urgency           = 4
+                assignment_group  = $Config.AssignmentGroupSysId
+                assigned_to       = "javascript:gs.user_id()"
+
+                # These were blank in my previous version due to URL shape; fixed now.
+                u_requestor       = "javascript:gs.user_id()"
+                u_affected_user   = "javascript:gs.user_id()"
+                cmdb_ci           = $Config.AffectedCI
+
+                short_description = $short
+                description       = $taskDesc
+
+                # Link the task to the ticket
+                u_work_ticket     = $WorkTicketSysId
+            })
+        )
     }
 
     return $urls
@@ -196,7 +252,7 @@ https://dvagov.sharepoint.com/sites/oitspmhsphismclinternal/SitePages/Clinical-I
 
 function New-WeeklyWorkTaskUrl {
     param(
-        [Parameter(Mandatory)][string]$Site,
+        [Parameter(Mandatory)][string]$SiteInfo,
         [Parameter(Mandatory)][string]$WorkTicketSysId
     )
 
@@ -204,7 +260,7 @@ function New-WeeklyWorkTaskUrl {
     $m = To-SNowDate $week.Monday
     $f = To-SNowDate $week.Friday
 
-    $short = "$Site - Weekly Task for Workweek $m to $f"
+    $short = "$SiteInfo - Weekly Daily Checks Task ($m to $f)"
 
     $weeklyDesc = @"
 Weekly Work Task Ticket for cleaning up Async
@@ -226,105 +282,107 @@ SPM-HISM-CL Daily Checks SOP:
 https://dvagov.sharepoint.com/sites/oitspmhsphismclinternal/SitePages/Clinical-Imaging-SOP-Guidance.aspx
 "@
 
-    New-SNowClassicUrl -Table "u_work_task" -Fields @{
+    New-SNowClassicTargetUrl -Table "u_work_task" -Fields @{
         type              = "normal"
         impact            = 4
         urgency           = 4
         assignment_group  = $Config.AssignmentGroupSysId
         assigned_to       = "javascript:gs.user_id()"
-        short_description = $short
-        description       = $weeklyDesc
-        cmdb_ci           = $Config.AffectedCI
+
         u_requestor       = "javascript:gs.user_id()"
         u_affected_user   = "javascript:gs.user_id()"
+        cmdb_ci           = $Config.AffectedCI
+
+        short_description = $short
+        description       = $weeklyDesc
+
         u_work_ticket     = $WorkTicketSysId
     }
 }
 
-# ----------------------------
-# Load Main Window
-# ----------------------------
+# =========================
+# Load XAML / Wire Controls
+# =========================
 $XamlPath = Join-Path $ScriptRoot "SNOW_DailyChecks.xaml"
-$XamlMainWindow = LoadXml -Path $XamlPath
+if (-not (Test-Path $XamlPath)) { throw "XAML not found: $XamlPath" }
+
+$XamlMainWindow = Load-XmlXaml -Path $XamlPath
 $Reader = New-Object System.Xml.XmlNodeReader $XamlMainWindow
 $Form = [Windows.Markup.XamlReader]::Load($Reader)
 
+# Auto-bind controls: $WPF_<Name>
 $XamlMainWindow.SelectNodes("//*[@Name]") | ForEach-Object {
     Set-Variable -Name ("WPF_{0}" -f $_.Name) -Value $Form.FindName($_.Name)
 }
 
-# script-scoped state (cleaner than $Global:)
-$script:CurrentSite = $null
+# Keep site in script scope (cleaner than Global)
+$script:SiteInfo = ""
 
-# ----------------------------
+# =========================
 # UI Events
-# ----------------------------
+# =========================
+
+# Button 1: Create Work Ticket
 $WPF_XMLbtnSelectInstallFile.Add_Click({
     try {
-        $site = ($WPF_XMLAddInstallFilePath.Text ?? "").Trim()
+        $site = (Get-TextSafe $WPF_XMLAddInstallFilePath.Text).Trim()
         if ([string]::IsNullOrWhiteSpace($site)) {
             [void][System.Windows.MessageBox]::Show("Enter Site/Site Code (ex: TVH/626).")
             return
         }
 
-        $script:CurrentSite = $site
+        $script:SiteInfo = $site
 
+        # Preflight terms gate (SSO)
         Invoke-SNowPreflightTerms
 
-        Write-Host "Opening ServiceNow Home..." -ForegroundColor Cyan
+        # Open home then the new ticket prefilled
         Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-window", $Config.HomeUrl) | Out-Null
         Start-Sleep -Seconds 4
 
-        $ticketUrl = New-WorkTicketUrl -Site $site
-        Write-Host "Creating Work Ticket for $site..." -ForegroundColor Cyan
+        $ticketUrl = New-DailyChecksWorkTicketUrl -SiteInfo $site
         Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-window", $ticketUrl) | Out-Null
-
-        Write-Host "Work Ticket window opened." -ForegroundColor Green
     }
     catch {
         [void][System.Windows.MessageBox]::Show($_.Exception.Message)
     }
 })
 
+# Button 2: Create Work Tasks (paste ticket URL containing sys_id)
 $WPF_StartButton.Add_Click({
     try {
-        $site = ($script:CurrentSite ?? "").Trim()
+        $site = (Get-TextSafe $script:SiteInfo).Trim()
         if ([string]::IsNullOrWhiteSpace($site)) {
-            # fallback if they skipped first button
-            $site = ($WPF_XMLAddInstallFilePath.Text ?? "").Trim()
+            $site = (Get-TextSafe $WPF_XMLAddInstallFilePath.Text).Trim()
             if ([string]::IsNullOrWhiteSpace($site)) {
                 [void][System.Windows.MessageBox]::Show("Enter Site/Site Code first (ex: TVH/626).")
                 return
             }
-            $script:CurrentSite = $site
+            $script:SiteInfo = $site
         }
 
-        $pasted = ($WPF_XMLEnterFQDNInfo.Text ?? "").Trim()
+        $pasted = (Get-TextSafe $WPF_XMLEnterFQDNInfo.Text).Trim()
         if ([string]::IsNullOrWhiteSpace($pasted)) {
-            [void][System.Windows.MessageBox]::Show("Paste the Work Ticket URL (or any text containing sys_id=...).")
+            [void][System.Windows.MessageBox]::Show("Paste the Work Ticket URL (must contain sys_id=...).")
             return
         }
 
-        $id = Get-SNowSysIdFromText -Text $pasted
-        if (-not $id) {
-            [void][System.Windows.MessageBox]::Show("Could not find a 32-character sys_id in what you pasted.")
+        $ticketSysId = Get-SNowSysIdFromText -Text $pasted
+        if (-not $ticketSysId) {
+            [void][System.Windows.MessageBox]::Show("Could not find sys_id (32 chars) in what you pasted.")
             return
         }
 
         Invoke-SNowPreflightTerms
 
-        Write-Host "Creating Daily Work Tasks..." -ForegroundColor Cyan
-        $taskUrls = New-WorkTaskUrls -Site $site -WorkTicketSysId $id
+        $taskUrls = New-DailyChecksWorkTaskUrls -SiteInfo $site -WorkTicketSysId $ticketSysId
         foreach ($u in $taskUrls) {
             Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-tab", $u) | Out-Null
-            Start-Sleep -Milliseconds 400
+            Start-Sleep -Milliseconds 350
         }
 
-        Write-Host "Creating Weekly Work Task..." -ForegroundColor Cyan
-        $weeklyUrl = New-WeeklyWorkTaskUrl -Site $site -WorkTicketSysId $id
+        $weeklyUrl = New-WeeklyWorkTaskUrl -SiteInfo $site -WorkTicketSysId $ticketSysId
         Start-Process -FilePath $Config.BrowserExe -ArgumentList @("--new-tab", $weeklyUrl) | Out-Null
-
-        Write-Host "All tasks opened." -ForegroundColor Green
     }
     catch {
         [void][System.Windows.MessageBox]::Show($_.Exception.Message)
@@ -333,6 +391,5 @@ $WPF_StartButton.Add_Click({
 
 $WPF_Close.Add_Click({ $Form.Close() })
 
-[System.GC]::Collect()
-$Form.ShowDialog() | Out-Null
-
+# Show UI
+[void]$Form.ShowDialog()
