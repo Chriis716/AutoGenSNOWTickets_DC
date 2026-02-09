@@ -1,0 +1,43 @@
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:284 char:50
++         $site = ($WPF_XMLAddInstallFilePath.Text ?? "").Trim()
++                                                  ~~
+Unexpected token '??' in expression or statement.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:284 char:49
++         $site = ($WPF_XMLAddInstallFilePath.Text ?? "").Trim()
++                                                 ~
+Missing closing ')' in expression.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:283 char:9
++     try {
++         ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:284 char:55
++         $site = ($WPF_XMLAddInstallFilePath.Text ?? "").Trim()
++                                                       ~
+The Try statement is missing its Catch or Finally block.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:282 char:40
++ $WPF_XMLbtnSelectInstallFile.Add_Click({
++                                        ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:303 char:5
++     }
++     ~
+Unexpected token '}' in expression or statement.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:307 char:1
++ })
++ ~
+Unexpected token '}' in expression or statement.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:307 char:2
++ })
++  ~
+Unexpected token ')' in expression or statement.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:311 char:38
++         $site = ($script:CurrentSite ?? "").Trim()
++                                      ~~
+Unexpected token '??' in expression or statement.
+At C:\Users\VHATVHSivilC\OneDrive - Department of Veterans Affairs\Desktop\Daily Checks Script\DailyChecks.ps1:311 char:37
++         $site = ($script:CurrentSite ?? "").Trim()
++                                     ~
+Missing closing ')' in expression.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
