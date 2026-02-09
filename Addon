@@ -1,0 +1,83 @@
+function ConvertTo-SNowQueryValue {
+    param([Parameter(Mandatory)][string]$Text)
+
+    # Preserve line breaks the way ServiceNow reliably renders them
+    $t = $Text -replace "`r`n", "`n"
+    $t = $t -replace "`r", "`n"
+    $t = $t -replace "`n", "%0D%0A"
+
+    # Keep it close to how your original worked:
+    # encode only characters that will break query parsing, but don't obliterate everything
+    $t = $t.Replace("%", "%25")  # protect literal % first
+    $t = $t.Replace("^", "%5E")
+    $t = $t.Replace("&", "%26")
+    $t = $t.Replace("=", "%3D")
+    $t = $t.Replace("#", "%23")
+    $t = $t.Replace("+", "%2B")
+    $t = $t.Replace(" ", "%20")
+
+    return $t
+}
+
+function New-SNowClassicTargetUrl {
+    param(
+        [Parameter(Mandatory)][string]$InstanceBaseUrl,  # https://yourit.va.gov
+        [Parameter(Mandatory)][string]$Table,            # u_work_ticket / u_work_task
+        [Parameter(Mandatory)][hashtable]$Fields
+    )
+
+    # Build sysparm_query the ServiceNow way: key=value^key=value
+    $pairs = foreach ($k in $Fields.Keys) {
+        $v = $Fields[$k]
+        if ($null -eq $v -or ($v -is [string] -and $v.Trim() -eq "")) { continue }
+
+        $vv = ConvertTo-SNowQueryValue -Text ([string]$v)
+        "$k=$vv"
+    }
+
+    $rawQuery = ($pairs -join "^")
+
+    # Embed sysparm_query inside the encoded target URL (this is what your old script did)
+    $targetEncoded =
+        "$Table.do%3Fsys_id%3D-1%26sysparm_query%3D$rawQuery"
+
+    return "$InstanceBaseUrl/now/nav/ui/classic/params/target/$targetEncoded"
+}
+
+
+
++++++++++++++++++++++++++++++++++++
+Worticket
+$fields = @{
+  type              = "normal"
+  impact            = 4
+  assignment_group  = "4e965a49db5dd3c0b857fd721f9619d5"
+  assigned_to       = "javascript:gs.user_id()"
+  short_description = $short
+  description       = $desc
+  due_date          = $due
+  cmdb_ci           = "bbf1bbdf1b88ec5006020f6fe54bcb68"
+}
+
+$ticketUrl = New-SNowClassicTargetUrl -InstanceBaseUrl $Config.InstanceBase -Table "u_work_ticket" -Fields $fields
+
++++++++++++++++++++++++++
+Wortassk
+$taskFields = @{
+  type              = "normal"
+  impact            = 4
+  urgency           = 4
+  assignment_group  = $Config.AssignmentGroupSysId
+  assigned_to       = "javascript:gs.user_id()"
+  short_description = $short
+  description       = $taskDesc   # will keep line breaks now
+  cmdb_ci           = $Config.AffectedCI
+  u_requestor       = "javascript:gs.user_id()"
+  u_affected_user   = "javascript:gs.user_id()"
+  u_work_ticket     = $WorkTicketSysId
+}
+
+$taskUrl = New-SNowClassicTargetUrl -InstanceBaseUrl $Config.InstanceBase -Table "u_work_task" -Fields $taskFields
+
+
+
