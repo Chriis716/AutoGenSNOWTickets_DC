@@ -1,4 +1,4 @@
-{
-  "status": 400,
-  "message": "The specified user [{\"@odata.type\":\"#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser\",\"Claims\":\"i:0#.f|membership|email.address@va.gov\",\"DisplayName\":\"Adress, Email E.\",\"Email\":\"email.address@va.gov\",\"Picture\":\"https://dvagov.sharepoint.com/sites/oitspmhsphismclinternal/_layouts/15/UserPhoto.aspx?Size=L&AccountName=email.address@va.gov\",\"Department\":\"Office of Information Technology\",\"JobTitle\":\"Clinicial Imaging Supervisor\"}] could not be found.\r\nclientRequestId: 63094213-b8c7-4542-ad77-44d70b27e575\r\nserviceRequestId: 485bf5a1-1083-b000-b5a4-59f5dec764cc"
-}
+Send a Microsoft Graph HTTP request - Microsoft Teams 
+Send an HTTP request - Office 365 Outlook 
+Send an HTTP request - Office 365 Users 
+Send an HTTP request to SharePoint - SharePoint
