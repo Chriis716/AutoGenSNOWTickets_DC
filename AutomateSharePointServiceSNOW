@@ -1,0 +1,63 @@
+Ability to use Power Automate to push information back into ServiceNow ticket
+We are implementing ServiceNow for the informatics department and as a whole we are trying to figure out a way to collect more information about the tickets a user submits. We have a form created that we are going to send to them via power automate with a link to a form we created that will capture the additional information we need to complete their requests. What I am trying to do is figure out how i can use power automate to take those responses from the form and input them back into the ServiceNow ticket in the work note area. I have been going through different threads and am not finding a specific answer to my question. Any insight would be appreciated.
+
+
+Username
+Yesterday 12:07 PM
+Certainly, you can use Microsoft Power Automate to push information back into a ServiceNow ticket. Power Automate offers a variety of connectors and actions that enable you to integrate with ServiceNow seamlessly. Below is a general guide on how to set this up:
+
+Prerequisites
+ServiceNow Account: Ensure you have access to ServiceNow and have necessary permissions to create and update tickets.
+Power Automate Account: Microsoft account with access to Power Automate.
+ServiceNow API Access: Ensure the ServiceNow instance allows API access.
+Steps to Create the Flow
+Log into Power Automate
+Go to Power Automate and sign in with your Microsoft account.
+Create a New Flow
+Select "Create" from the left-hand side menu.
+Choose the type of flow you want to create. For pushing information back into a ServiceNow ticket, a "Automated Flow" or "Scheduled Flow" might be appropriate.
+Add a Trigger
+Select a trigger to start your flow. For example, you could use a trigger like "When an HTTP request is received" if you want to initiate the flow from an external system.
+You might also choose triggers like "Recurrence" to run the flow at regular intervals.
+Connect to ServiceNow
+Click on "New step" and search for the ServiceNow connector.
+Choose an action like "Get Record" if you need to fetch details from an existing ticket, or "Update Record" to update an existing ticket.
+Configure the Action
+Choose the appropriate ServiceNow instance from the connection dropdown.
+Fill in the necessary details like Table Name (e.g., incident for incidents or task for tasks), Record ID, and fields that you want to update.
+Map Your Data
+Use dynamic content to map data from previous steps of your flow to the fields in your ServiceNow action.
+For example, you could pull information from an email or a form response and push it into the ServiceNow ticket fields.
+Save and Test Your Flow
+Save your flow and test it to make sure everything is configured correctly.
+Review the run history to fix any issues or errors.
+ 
+Username.
+Yesterday 12:13 PM
+In the past (Event Management Team) we worked on Creating Incident tickets in ServiceNow and update/view status Incident tickets from the Rockies Navigator interface using OOTB  Rockies Navigator Power Automate.
+Use Power Automate to create ServiceNow instance.
+
+Username
+Yesterday 12:14 PM
+Chapman, Sheila M. thank you for the response! We have a couple questions: 
+
+Do we need a premium power automate account?
+How do we obtain the appropriate permissions and/or login to connect service now to power automate
+oauth2 (need instance name, client id, client secret)
+Basic auth (user name, password, and instance
+etc
+Username
+Yesterday 12:17 PM
+Handzel, Robert M. I am not sure about the premium account. You can submit a Demand to Request Access to ServiceNow API
+
+Username
+Yesterday 12:24 PM
+It seems to require an OIG sponsor. How/who can I message about this?
+
+Alternatively we have heard that service now can attach emails to tickets automatically if the INC is included in the subject. We could also make this work. Chapman, Sheila M. do you know anything about this?
+
+Username
+Yesterday 12:53 PM
+Robert ServiceNow does have email capability, but most emails are out of the box. An INC will send an automated email to the End User/requestor as each state changes and it will send an email to the Assigned to group or person. My suggestion is to open the demand and explain what you are looking for so that the INC team can review the possibilities. In the meantime I will check with my team to see if there are other alternatives.
+
+has context menu
