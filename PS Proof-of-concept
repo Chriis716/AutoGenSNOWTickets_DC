@@ -1,0 +1,183 @@
+# =========================
+# BASIC SERVICENOW TEST POC
+# =========================
+
+# --- CONFIG ---
+$SnowInstance = 'https://yourinstance.service-now.com'
+$Credential   = Get-Credential   # Replace later if using OAuth or service account auth
+
+# Optional: turn off for prod if your org uses proper certs
+# [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
+function Invoke-SnowTableApi {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('GET','POST','PATCH')]
+        [string]$Method,
+
+        [Parameter(Mandatory)]
+        [string]$Uri,
+
+        [Parameter()]
+        [object]$Body
+    )
+
+    $params = @{
+        Method      = $Method
+        Uri         = $Uri
+        Credential  = $Credential
+        Headers     = @{
+            'Accept'       = 'application/json'
+            'Content-Type' = 'application/json'
+        }
+        ErrorAction = 'Stop'
+    }
+
+    if ($PSBoundParameters.ContainsKey('Body')) {
+        $params.Body = ($Body | ConvertTo-Json -Depth 10)
+    }
+
+    try {
+        Invoke-RestMethod @params
+    }
+    catch {
+        Write-Error "ServiceNow API call failed: $($_.Exception.Message)"
+        if ($_.ErrorDetails.Message) {
+            Write-Error "Response: $($_.ErrorDetails.Message)"
+        }
+    }
+}
+
+function New-SnowChangeRequest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$ShortDescription,
+
+        [Parameter()]
+        [string]$Description = 'API test change request',
+
+        [Parameter()]
+        [string]$Justification = 'Proof-of-concept test from PowerShell',
+
+        [Parameter()]
+        [string]$ImplementationPlan = 'Test implementation plan',
+
+        [Parameter()]
+        [string]$BackoutPlan = 'Test backout plan',
+
+        [Parameter()]
+        [string]$TestPlan = 'Test plan validation'
+    )
+
+    $uri = "$SnowInstance/api/now/table/change_request"
+
+    # Keep this minimal. Add/remove fields based on what your instance requires.
+    $body = @{
+        short_description   = $ShortDescription
+        description         = $Description
+        justification       = $Justification
+        implementation_plan = $ImplementationPlan
+        backout_plan        = $BackoutPlan
+        test_plan           = $TestPlan
+        type                = 'normal'
+    }
+
+    $response = Invoke-SnowTableApi -Method POST -Uri $uri -Body $body
+
+    if ($response.result) {
+        [pscustomobject]@{
+            Number = $response.result.number
+            SysId  = $response.result.sys_id
+            State  = $response.result.state
+            Raw    = $response.result
+        }
+    }
+}
+
+function Get-SnowChangeRequest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$ChangeNumber
+    )
+
+    $encodedQuery = [uri]::EscapeDataString("number=$ChangeNumber")
+    $uri = "$SnowInstance/api/now/table/change_request?sysparm_query=$encodedQuery&sysparm_limit=1"
+
+    $response = Invoke-SnowTableApi -Method GET -Uri $uri
+
+    if ($response.result -and $response.result.Count -gt 0) {
+        $response.result[0]
+    }
+    else {
+        Write-Warning "Change request '$ChangeNumber' was not found."
+    }
+}
+
+function Update-SnowChangeRequest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$SysId,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Fields
+    )
+
+    $uri = "$SnowInstance/api/now/table/change_request/$SysId"
+    $response = Invoke-SnowTableApi -Method PATCH -Uri $uri -Body $Fields
+
+    if ($response.result) {
+        $response.result
+    }
+}
+
+function Set-SnowChangeRequestStatus {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$SysId,
+
+        [Parameter(Mandatory)]
+        [string]$StateValue
+    )
+
+    # IMPORTANT:
+    # Your instance may use numeric values, text values, or may block direct state updates.
+    # Start by testing with a harmless/non-final state your admins say is allowed.
+    $body = @{
+        state = $StateValue
+    }
+
+    $uri = "$SnowInstance/api/now/table/change_request/$SysId"
+    $response = Invoke-SnowTableApi -Method PATCH -Uri $uri -Body $body
+
+    if ($response.result) {
+        $response.result
+    }
+}
+
+# =========================
+# TEST SEQUENCE
+# =========================
+
+# 1. Create
+$newChange = New-SnowChangeRequest -ShortDescription "PowerShell API test $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+$newChange | Format-List
+
+# 2. Get by number
+$fetched = Get-SnowChangeRequest -ChangeNumber $newChange.Number
+$fetched | Format-List number, sys_id, short_description, state
+
+# 3. Update one field
+$updated = Update-SnowChangeRequest -SysId $newChange.SysId -Fields @{
+    work_notes = "Updated from PowerShell test script on $(Get-Date)"
+}
+$updated | Format-List number, sys_id, state, work_notes
+
+# 4. Try state/status update
+# Replace with a value that your instance actually allows
+$statusUpdated = Set-SnowChangeRequestStatus -SysId $newChange.SysId -StateValue '1'
+$statusUpdated | Format-List number, sys_id, state
