@@ -1,1 +1,43 @@
-Invoke-SnowTableApi : ServiceNow API call failed: The remote server returned an error: (401) Unauthorized.
+$InstanceUrl  = 'https://yourinstance.service-now.com'
+$ClientId     = 'YOUR_CLIENT_ID'
+$ClientSecret = 'YOUR_CLIENT_SECRET'
+
+$TokenUri = "$InstanceUrl/oauth_token.do"
+
+$TokenBody = @{
+    grant_type    = 'client_credentials'
+    client_id     = $ClientId
+    client_secret = $ClientSecret
+}
+
+$TokenResponse = Invoke-RestMethod -Method Post -Uri $TokenUri -Body $TokenBody -ErrorAction Stop
+$AccessToken = $TokenResponse.access_token
+
+$Headers = @{
+    Authorization = "Bearer $AccessToken"
+    Accept        = 'application/json'
+}
+
+# harmless read test
+$TestUri = "$InstanceUrl/api/now/table/change_request?sysparm_limit=1"
+Invoke-RestMethod -Method Get -Uri $TestUri -Headers $Headers -ErrorAction Stop
+
++++++++++++++++++++++
+
+$InstanceUrl = 'https://yourinstance.service-now.com'
+$Thumbprint  = 'YOUR_CERT_THUMBPRINT'
+
+$Cert = Get-Item "Cert:\CurrentUser\My\$Thumbprint"
+
+$Headers = @{
+    Accept = 'application/json'
+}
+
+$TestUri = "$InstanceUrl/api/now/table/change_request?sysparm_limit=1"
+
+Invoke-RestMethod `
+    -Method Get `
+    -Uri $TestUri `
+    -Certificate $Cert `
+    -Headers $Headers `
+    -ErrorAction Stop
