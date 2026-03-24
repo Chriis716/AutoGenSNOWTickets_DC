@@ -1,3 +1,11 @@
+Get-ChildItem Cert:\CurrentUser\My |
+Where-Object {
+    $_.EnhancedKeyUsageList.FriendlyName -contains "Client Authentication"
+} |
+Select-Object Subject, Thumbprint, EnhancedKeyUsageList
+
+++++++++++++++++++++
+
 $InstanceUrl  = 'https://yourinstance.service-now.com'
 $ClientId     = 'YOUR_CLIENT_ID'
 $ClientSecret = 'YOUR_CLIENT_SECRET'
