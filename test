@@ -1,26 +1,36 @@
-📊 Summary Table
-Servers	Manual Time	Tool Time	Time Saved
-1	12 min	3 min	9 min
-10	2 hrs	3 min	~2 hrs
-15	3 hrs	3 min	~3 hrs
-20	4 hrs	3 min	~4 hrs
-25	5 hrs	3 min	~5 hrs
+🩺 Clinical Imaging Admin Tool — Time Savings Breakdown
+📊 Baseline (from your numbers)
+Daily savings: ~310 hours
+Based on:
+170 sites
+2,494 servers
+7–8 min/server
+~3 min automated runtime per site
+⏱️ Time Saved Over Time
+📅 Weekly Savings
 
+👉 ~1,550 hours per week
 
-Import-Module ActiveDirectory
+(310 hours × 5 workdays)
 
-$OU = "OU=YourOU,OU=SubOU,DC=domain,DC=com"
+📆 Monthly Savings
 
-$Servers = Get-ADComputer -SearchBase $OU -Filter 'OperatingSystem -like "*Server*"' -Properties OperatingSystem
+👉 ~6,200 hours per month
 
-$Servers.Count
+(1,550 × 4 weeks — conservative)
 
+If you want a more precise monthly avg:
+👉 ~6,717 hours/month (310 × 21.7 avg workdays)
 
-Import-Module ActiveDirectory
+📅 Annual Savings (recap)
 
-$OU = "OU=YourOU,OU=SubOU,DC=va,DC=gov"
-$DC = "yourdc.va.gov"
+👉 ~80,600 hours per year
 
-$Count = (Get-ADComputer -SearchBase $OU -Server $DC -Filter '*').Count
+👥 What That Means in People
+Timeframe	Hours Saved	Equivalent Staff
+Weekly	1,550 hrs	~0.75 FTE/week
+Monthly	6,200 hrs	~3 FTE/month
+Annual	80,600 hrs	~39 FTE/year
+💡 How to Say It Simply
 
-Write-Host "Total Computers:" $Count
+“This tool saves over 1,500 hours every week and more than 6,000 hours every month across the VA enterprise.”
