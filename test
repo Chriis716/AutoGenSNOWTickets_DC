@@ -32,83 +32,9 @@ Privacy (wrong routing = potential exposure)
 
 If they ask what happened, your explanation should sound like this:
 
-“When an AE Title does not match an approved configuration, the connection is placed on hold. This prevents unknown or misconfigured systems from sending images into PACS. Once the correct AE Title is confirmed, I validate and allow routing.”
+When the AE Title was first observed, it did not match the approved configuration, so the connection was placed on hold to prevent unvalidated traffic from entering PACS.
 
-That’s it. Clean. Controlled. No rambling.
+Once the issue was identified and there was awareness of clinical impact, I manually facilitated image delivery to ensure studies were available, while still awaiting proper configuration validation.”
 
-4. Be clear about your dependency (this protects you)
+“The hold is to prevent unknown systems from continuously sending unvalidated traffic. Once the source and context were understood, I was able to safely facilitate delivery of the specific studies while the configuration issue remained under review.”
 
-You should clearly state:
-
-“I rely on the Modality Interface request and BioMed/vendor coordination to know what configuration is expected.”
-
-That shows:
-
-You are not acting independently
-You are part of a controlled process chain
-5. If they bring up patient impact
-
-Acknowledge—but don’t accept fault:
-
-“I understand there was a delay, and that’s not ideal. At the same time, allowing an unrecognized AE Title through without validation could introduce incorrect or misrouted studies, which also presents patient safety and data integrity risks.”
-
-This is critical:
-
-You’re not dismissing impact
-You’re showing why your action was necessary
-6. If they ask about manual intervention
-
-You mentioned you manually push images through sometimes — be careful here.
-
-If asked:
-
-“Once the correct configuration is confirmed, I can manually validate and allow routing. However, I do not bypass validation for unknown AE Titles.”
-
-Avoid saying:
-
-“I usually just push them through”
-“I fix it manually all the time”
-
-That can be twisted into:
-
-“Why didn’t you just do that here?”
-
-🚫 What NOT to say (important)
-
-Do NOT say:
-
-“Images fail all the time”
-“This happens everywhere”
-“They didn’t tell me so it’s not my fault”
-“I always fix these manually”
-
-Even if true — it weakens your position.
-
-🧠 The winning position (your anchor)
-
-If you remember nothing else, remember this:
-
-“I followed standard validation process. The AE Title did not match the approved configuration, so the connection was held until it could be verified.”
-
-That is:
-
-Defensible
-Standard practice
-Hard to argue against
-💬 If you want a ready-to-use response (if they email you)
-
-I can write you a privacy-compliant response once you see what they actually ask.
-
-My honest take
-
-You’re actually in a strong position, if you stay disciplined:
-
-You followed process
-You prevented unvalidated data
-The real issue = break in coordination + unexpected config
-
-Where people get burned in these situations is:
-
-They get frustrated → start explaining too much → say something that sounds inconsistent
-
-Stay tight. Stay factual. Stay process-based.
