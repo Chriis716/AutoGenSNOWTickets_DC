@@ -1,19 +1,78 @@
-2. Frame your action as a safety control
+How to Add Another Server Using the XML Updater
+Purpose
 
-“When an AE Title doesn’t match the approved configuration, the connection is held. That’s a safeguard to prevent unvalidated or misconfigured systems from sending images into PACS, which could lead to incorrect routing or data integrity issues.”
+Use the XML Updater section of the tool when you need to add a new server to an existing site entry, or create a new site entry with its assigned servers.
 
-3. Be ready to explain your workflow simply
+The XML Updater writes changes to the inventory XML file that the reporting tool uses to load sites, teams, and server lists.
 
-“My workflow is based on the approved Modality Interface request. I validate incoming connections against that configuration. If everything matches, traffic is allowed. If it doesn’t match, it’s placed on hold until the configuration can be verified.”
+Before You Start
 
-4. Be clear about your dependency (this protects you)
+Make sure you know the following information before adding a server:
 
-“I rely on the Modality Interface request and coordination from BIO-MED and the department to know what configuration to expect. That’s what I use to validate and enable routing. If what’s observed doesn’t match what was submitted, I can’t safely allow it through.”
+Team Number
+Example: 1, 2, 3, or 4
+VISN
+Example: V18
+Site Abbreviation
+Example: TVH
+Team Name
+Example: Blue, Red, Western, etc.
+Server FQDN(s)
+Example: IMMCR01.va.gov
 
-5. If they bring up patient impact
+Use the server’s full DNS name when possible.
 
-“I understand there was a delay, and that’s not ideal. At the same time, allowing an unrecognized or unvalidated AE Title into PACS could result in misrouted or incorrect studies, which also presents a patient safety and data integrity risk. The hold is intended to prevent that.”
+Steps to Add Another Server
+1. Open the application
 
-6. If they ask about manual intervention
+Launch Clinical Imaging Admin Tools.
 
-“Once the situation was understood and there was awareness of clinical impact, I facilitated delivery of the affected studies to ensure they were available for interpretation, while the configuration discrepancy remained under review. I do not bypass validation for unknown configurations, but I can support delivery once the context is confirmed.”
+2. Go to the XML Updater section
+
+From the left navigation menu, select XML Updater.
+
+3. Enter the site information
+
+Fill in the site fields exactly as they should exist in inventory:
+
+Team Number
+VISN
+Site Abbreviation
+Team Name
+
+If you are adding a server to an existing site, these values must match the existing record.
+
+4. Enter the server name
+
+In the server field or server list area, add the new server’s FQDN.
+
+If the updater accepts multiple servers, enter them in the expected format used by your tool version.
+
+5. Run the update
+
+Click the button used to submit the inventory update.
+
+The tool will call the backend inventory update script and attempt to:
+
+validate the entry
+update the XML safely
+preserve schema format
+write the updated inventory file
+6. Confirm success
+
+Review the output or status message in the updater window.
+
+A successful update should indicate the inventory change completed without validation errors.
+
+Example
+Example: Add a server to an existing site
+
+If site TVH already exists under Team 1 and you want to add a new server:
+
+Team Number: 1
+VISN: V09
+Site Abbreviation: TVH
+Team Name: Blue
+Server: IMMTCR03.va.gov
+
+Then run the update
