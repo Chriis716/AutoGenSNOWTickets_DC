@@ -5,3 +5,12 @@ Servers	Manual Time	Tool Time	Time Saved
 15	3 hrs	3 min	~3 hrs
 20	4 hrs	3 min	~4 hrs
 25	5 hrs	3 min	~5 hrs
+
+
+Import-Module ActiveDirectory
+
+$OU = "OU=YourOU,OU=SubOU,DC=domain,DC=com"
+
+$Servers = Get-ADComputer -SearchBase $OU -Filter 'OperatingSystem -like "*Server*"' -Properties OperatingSystem
+
+$Servers.Count
