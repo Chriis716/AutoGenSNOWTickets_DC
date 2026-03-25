@@ -14,3 +14,13 @@ $OU = "OU=YourOU,OU=SubOU,DC=domain,DC=com"
 $Servers = Get-ADComputer -SearchBase $OU -Filter 'OperatingSystem -like "*Server*"' -Properties OperatingSystem
 
 $Servers.Count
+
+
+Import-Module ActiveDirectory
+
+$OU = "OU=YourOU,OU=SubOU,DC=va,DC=gov"
+$DC = "yourdc.va.gov"
+
+$Count = (Get-ADComputer -SearchBase $OU -Server $DC -Filter '*').Count
+
+Write-Host "Total Computers:" $Count
