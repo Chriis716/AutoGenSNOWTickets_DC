@@ -1,40 +1,19 @@
-You’re in a situation where tone and framing matter more than technical detail.
-
-Right now your mindset is a little “this happens all the time / others do worse.”
-Do not lead with that. That argument will hurt you in a privacy/compliance conversation.
-
-Instead, your approach needs to be:
-
-🎯 Your Game Plan
-1. Stay in facts + process, not emotion
-
-Do not argue.
-Do not compare to other issues.
-Do not say “this happens all the time.”
-
-Compliance cares about:
-
-Was there a process
-Was it followed
-Was there risk to PHI / patient care
 2. Frame your action as a safety control
 
-This is your strongest position:
+“When an AE Title doesn’t match the approved configuration, the connection is held. That’s a safeguard to prevent unvalidated or misconfigured systems from sending images into PACS, which could lead to incorrect routing or data integrity issues.”
 
-You did not “block care” — you prevented unvalidated data from entering PACS
-
-That aligns with:
-
-Data integrity
-Patient safety
-Privacy (wrong routing = potential exposure)
 3. Be ready to explain your workflow simply
 
-If they ask what happened, your explanation should sound like this:
+“My workflow is based on the approved Modality Interface request. I validate incoming connections against that configuration. If everything matches, traffic is allowed. If it doesn’t match, it’s placed on hold until the configuration can be verified.”
 
-When the AE Title was first observed, it did not match the approved configuration, so the connection was placed on hold to prevent unvalidated traffic from entering PACS.
+4. Be clear about your dependency (this protects you)
 
-Once the issue was identified and there was awareness of clinical impact, I manually facilitated image delivery to ensure studies were available, while still awaiting proper configuration validation.”
+“I rely on the Modality Interface request and coordination from BIO-MED and the department to know what configuration to expect. That’s what I use to validate and enable routing. If what’s observed doesn’t match what was submitted, I can’t safely allow it through.”
 
-“The hold is to prevent unknown systems from continuously sending unvalidated traffic. Once the source and context were understood, I was able to safely facilitate delivery of the specific studies while the configuration issue remained under review.”
+5. If they bring up patient impact
 
+“I understand there was a delay, and that’s not ideal. At the same time, allowing an unrecognized or unvalidated AE Title into PACS could result in misrouted or incorrect studies, which also presents a patient safety and data integrity risk. The hold is intended to prevent that.”
+
+6. If they ask about manual intervention
+
+“Once the situation was understood and there was awareness of clinical impact, I facilitated delivery of the affected studies to ensure they were available for interpretation, while the configuration discrepancy remained under review. I do not bypass validation for unknown configurations, but I can support delivery once the context is confirmed.”
